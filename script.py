@@ -65,7 +65,7 @@ def get_topics(similarity_matrix, num_topics=5):
     distances = 1 - similarity_matrix
     kmeans = KMeans(n_clusters=num_topics).fit(distances)
     clusters = kmeans.labels_
-    chunk_topics = np.array([np.where(clusters == i)[0] for i in range(num_topics)])
+    chunk_topics = [np.where(clusters == i)[0] for i in range(num_topics)]
     return chunk_topics
 
 # Function to parse title and summary results
