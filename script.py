@@ -82,7 +82,7 @@ def parse_title_summary_results(results):
 # Function to summarize the stage
 def summarize_stage(chunks, topics):
     print(f'Start time: {datetime.now()}')
-  
+
     # Prompt to get title and summary for each topic
     map_prompt_template = """Write a detailed summary on the structure of the provided content which contains code from selected files from a Github repository, which deploys a chatbot system in Microsoft Azure. Please list all necessary details which can be extrapolated later to specific guidelines how to reverse engineer the repository. I am specifically looking for answers on:
 i. the specific steps to deploy this resource? Please list all the files that contain the specific tasks that automate the deployment!
@@ -94,20 +94,20 @@ iii. the detailed steps that need to be performed in order to adjust this reposi
     # Define the LLMs
     map_llm = OpenAI(temperature=0, model_name = 'text-davinci-003')
     map_llm_chain = LLMChain(llm = map_llm, prompt = map_prompt)
-    
+
     summaries = []
     for i in range(len(topics)):
         topic_summaries = []
         for topic in topics[i]:
             map_llm_chain_input = [{'text': chunks[topic]}]
-            # Run the input through the LLM chain
+            # Run the input through the LLM chain (works in parallel)
             map_llm_chain_results = map_llm_chain.apply(map_llm_chain_input)
             stage_1_outputs = parse_title_summary_results([e['text'] for e in map_llm_chain_results])
             # Split the titles and summaries
             topic_summaries.append(stage_1_outputs[0]['summary'])
         # Concatenate all summaries of a topic
         summaries.append(' '.join(topic_summaries))
-    
+
     print(f'Stage done time {datetime.now()}')
 
     return summaries
@@ -122,22 +122,20 @@ if __name__ == "__main__":
     for file, content in file_contents.items():
         print(f'Processing {file}...')
         chunks = get_chunks_from_text(content)
-        prompt_template = PromptTemplate(text='{}', prepend='I need to summarize the following text: ')
-        try:
-            # Summarize chunks
-            chunk_summaries = summarize_chunks(chunks, prompt_template)
+        prompt_template = PromptTemplate(template='I need to summarize the following text: {text}', input_variables=['text'])
 
-            # Create similarity matrix
-            similarity_matrix = create_similarity_matrix(chunk_summaries)
+        # Summarize chunks
+        chunk_summaries = summarize_chunks(chunks, prompt_template)
 
-            # Get topics
-            topics = get_topics(similarity_matrix)
+        # Create similarity matrix
+        similarity_matrix = create_similarity_matrix(chunks)
 
-            # Summarize stage
-            stage_summary = summarize_stage(chunk_summaries, topics)
-            
-            print(f'Summary for {file}:\n{stage_summary}\n')
-        except Exception as e:
-            print(f'Error while processing {file}: {e}\n')
+        # Get topics
+        topics = get_topics(similarity_matrix)
+
+        # Summarize stage
+        stage_summary = summarize_stage(chunk_summaries, topics)
+
+        print(f'Summary for {file}:\n{stage_summary}\n')
 
     print('All files processed.')
